@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Field Stock Mobile</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', system-ui, sans-serif; padding-bottom: 80px; padding-top: 60px; }
+        .app-header { position: fixed; top: 0; left: 0; right: 0; background: #ffc107; color: #212529; height: 60px; z-index: 1030; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.3s; }
+        .app-title { font-size: 1.2rem; font-weight: 800; margin: 0; }
+        
+        .offline-banner { position: fixed; top: 60px; left: 0; right: 0; background: #dc3545; color: #fff; text-align: center; font-size: 0.75rem; font-weight: bold; padding: 4px; z-index: 1020; display: none; }
+        
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; display: flex; justify-content: space-around; height: 70px; z-index: 1030; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); border-top: 1px solid #e9ecef; }
+        .nav-item-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #6c757d; text-decoration: none; border: none; background: none; transition: all 0.2s; }
+        .nav-item-btn i { font-size: 1.4rem; margin-bottom: 2px; }
+        .nav-item-btn span { font-size: 0.75rem; font-weight: 600; }
+        .nav-item-btn.active.nav-in { color: #198754; }
+        .nav-item-btn.active.nav-out { color: #dc3545; }
+        .nav-item-btn.active.nav-history { color: #0d6efd; }
+        
+        .view-section { display: none; padding: 15px; animation: fadeIn 0.3s; }
+        .view-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .card-mobile { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid #f0f0f0; }
+        .form-label { font-size: 0.85rem; font-weight: 700; color: #495057; margin-bottom: 4px; text-transform: uppercase;}
+        .form-control { border-radius: 8px; padding: 12px 15px; font-size: 1rem; background-color: #f8f9fa; border: 1px solid #e2e8f0; }
+        .form-control:focus { background-color: #fff; border-color: #ffc107; box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.2); }
+        .section-title { display: flex; align-items: center; font-size: 0.95rem; font-weight: bold; margin-bottom: 12px; color: #212529; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px;}
+        .btn-submit { background-color: #ffc107; color: #212529; font-weight: 800; font-size: 1.1rem; padding: 15px; border-radius: 12px; width: 100%; border: none; margin-top: 10px; box-shadow: 0 4px 6px rgba(255,193,7,0.3);}
+        
+        .history-card { background: #fff; border-radius: 12px; padding: 12px 15px; margin-bottom: 12px; border-left: 5px solid #6c757d; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .history-card.border-in { border-left-color: #198754; }
+        .history-card.border-out { border-left-color: #dc3545; }
+        .history-card.border-pending { border-left-color: #fd7e14; background-color: #fff8eb; }
+        
+        #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    </style>
+</head>
+<body>
+
+    <div id="loadingOverlay">
+        <div class="spinner-border text-warning" role="status" style="width: 3rem; height: 3rem;"></div>
+        <h5 class="mt-3 fw-bold text-dark" id="loadingText">Menyiapkan Aplikasi...</h5>
+    </div>
+
+    <header class="app-header" id="appHeader">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-truck-front-fill fs-3 me-2"></i>
+            <h1 class="app-title" id="headerTitle">MATERIAL MASUK (IN)</h1>
+        </div>
+    </header>
+    
+    <div class="offline-banner" id="offlineBanner">
+        <i class="bi bi-wifi-off"></i> TIDAK ADA SINYAL. MODE OFFLINE AKTIF.
+    </div>
+
+    <main id="view-form" class="view-section active">
+        <div id="formSpacer" style="height: 0px; transition: 0.3s;"></div> 
+
+        <form id="stockForm" onsubmit="submitData(event)">
+            <input type="hidden" id="tipePergerakan" value="IN">
+            
+            <div class="card-mobile mt-2">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label class="form-label">Tanggal & Jam</label>
+                        <input type="datetime-local" class="form-control" id="tanggalJam" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Jenis Material</label>
+                        <input type="text" class="form-control text-uppercase" id="jenisMaterial" placeholder="Cth: OB" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-mobile">
+                <div class="section-title text-primary"><i class="bi bi-geo-alt-fill me-2"></i> LOKASI ASAL</div>
+                <div class="row g-3">
+                    <div class="col-4">
+                        <input type="number" step="0.1" class="form-control" id="kmAsal" placeholder="KM" required>
+                    </div>
+                    <div class="col-8">
+                        <input type="text" class="form-control text-uppercase" id="lokasiAsal" placeholder="Nama Pit" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-mobile">
+                <div class="section-title text-success"><i class="bi bi-geo-fill me-2"></i> LOKASI TUJUAN</div>
+                <div class="row g-3">
+                    <div class="col-4">
+                        <input type="number" step="0.1" class="form-control" id="kmTujuan" placeholder="KM" required>
+                    </div>
+                    <div class="col-8">
+                        <input type="text" class="form-control text-uppercase" id="lokasiTujuan" placeholder="Nama ROM" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-mobile">
+                <div class="section-title text-dark"><i class="bi bi-truck me-2"></i> IDENTITAS TRUCK</div>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <input type="text" class="form-control fw-bold text-uppercase" id="signCallDT" placeholder="Unit DT" required>
+                    </div>
+                    <div class="col-6">
+                        <input type="text" class="form-control" id="perusahaanDT" placeholder="PT Pemilik" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-mobile">
+                <div class="section-title text-dark"><i class="bi bi-cone-striped me-2 text-warning"></i> ALAT LOADING</div>
+                <div class="row g-3 mb-3 pb-3 border-bottom">
+                    <div class="col-12">
+                        <input type="text" class="form-control" id="jenisLoading" placeholder="Excavator" required>
+                    </div>
+                    <div class="col-6">
+                        <input type="text" class="form-control fw-bold text-uppercase" id="signCallLoading" placeholder="No. Alat" required>
+                    </div>
+                    <div class="col-6">
+                        <input type="text" class="form-control" id="perusahaanLoading" placeholder="PT Pemilik" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-primary"><i class="bi bi-rulers"></i> METODE VOLUME</label>
+                    <div class="d-flex gap-3 mt-1">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="metodeVolume" id="radioBucket" value="BUCKET" checked onchange="toggleMetodeVolume()">
+                            <label class="form-check-label fw-bold" for="radioBucket">Bucket</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="metodeVolume" id="radioTimbangan" value="TIMBANGAN" onchange="toggleMetodeVolume()">
+                            <label class="form-check-label fw-bold" for="radioTimbangan">Timbangan</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="groupBucket" class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Kapasitas</label>
+                        <input type="number" step="0.01" class="form-control" id="kapasitasBucket" oninput="kalkulasiVolume()" placeholder="m³">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-danger">Jumlah</label>
+                        <input type="number" step="0.1" class="form-control bg-danger bg-opacity-10 fw-bold" id="jumlahBucket" oninput="kalkulasiVolume()" placeholder="Pass">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label text-success" id="labelTotalVolume">TOTAL (m³ / Ton)</label>
+                    <input type="number" step="0.01" class="form-control fw-bold fs-3 text-success bg-light" id="totalVolume" required readonly>
+                </div>
+            </div>
+
+            <div class="card-mobile mb-2">
+                <input type="text" class="form-control" id="namaChecker" placeholder="Nama Checker" required>
+            </div>
+
+            <button type="submit" class="btn-submit" id="btnSubmit">
+                <i class="bi bi-send-fill me-2"></i> SIMPAN 1 RIT
+            </button>
+        </form>
+    </main>
+
+    <!-- DASHBOARD RIWAYAT -->
+    <main id="view-history" class="view-section">
+        <div id="historySpacer" style="height: 0px; transition: 0.3s;"></div> 
+        
+        <div id="pendingSyncAlert" class="alert alert-warning py-2 mb-3 shadow-sm" style="display:none; font-size:0.85rem; border-left: 5px solid #fd7e14;">
+            <i class="bi bi-exclamation-triangle-fill"></i> Ada <b><span id="pendingCount">0</span> data rit</b> menunggu sinyal untuk disinkronisasi.
+            <button class="btn btn-sm btn-dark mt-2 w-100 fw-bold" onclick="syncQueueManual()"><i class="bi bi-cloud-arrow-up-fill"></i> Sinkronisasi Sekarang</button>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold m-0 text-secondary"><i class="bi bi-clock-history"></i> Riwayat Transaksi</h6>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadData()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+        </div>
+        <div id="historyList"></div>
+    </main>
+
+    <nav class="bottom-nav">
+        <button class="nav-item-btn active nav-in" id="navBtn-IN" onclick="switchTab('IN')">
+            <i class="bi bi-box-arrow-in-down"></i><span>IN</span>
+        </button>
+        <button class="nav-item-btn nav-out" id="navBtn-OUT" onclick="switchTab('OUT')">
+            <i class="bi bi-box-arrow-up"></i><span>OUT</span>
+        </button>
+        <button class="nav-item-btn nav-history" id="navBtn-HISTORY" onclick="switchTab('HISTORY')">
+            <i class="bi bi-clipboard-data"></i><span>REKAP</span>
+        </button>
+    </nav>
+
+    <script>
+        // ==========================================
+        // KONFIGURASI API (UNTUK MODE STANDALONE OFFLINE)
+        // ==========================================
+        // Jika Anda men-download HTML ini, isi URL_WEBAPP_GAS dengan URL Google Apps Script Anda.
+        const URL_WEBAPP_GAS = ""; 
+
+        let db = { records: [] };
+        
+        // PWA MANIFEST & SERVICE WORKER INJECTION (Agar Cache Tersimpan)
+        try {
+            const manifest = { name: "Field Stock", short_name: "FieldStock", display: "standalone", background_color: "#f8f9fa", theme_color: "#ffc107", start_url: location.href };
+            const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+            document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(manifestBlob)}">`);
+        } catch(e) {}
+
+        // DETEKSI SINYAL
+        window.addEventListener('online', handleNetworkChange);
+        window.addEventListener('offline', handleNetworkChange);
+
+        function handleNetworkChange() {
+            const banner = document.getElementById('offlineBanner');
+            const spacer1 = document.getElementById('formSpacer');
+            const spacer2 = document.getElementById('historySpacer');
+
+            if (!navigator.onLine) {
+                banner.style.display = 'block';
+                spacer1.style.height = '24px';
+                spacer2.style.height = '24px';
+            } else {
+                banner.style.display = 'none';
+                spacer1.style.height = '0px';
+                spacer2.style.height = '0px';
+                syncQueueAuto(); // Otomatis sync saat sinyal kembali
+            }
+        }
+
+        window.onload = () => {
+            handleNetworkChange(); 
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('tanggalJam').value = now.toISOString().slice(0,16);
+            toggleMetodeVolume();
+            
+            if(navigator.onLine) { loadData(); } else { renderUI(); }
+        };
+
+        function startLoading(text="Memuat Data...") { document.getElementById('loadingText').innerText = text; document.getElementById('loadingOverlay').style.display = 'flex'; }
+        function endLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+
+        function toggleMetodeVolume() {
+            const mode = document.querySelector('input[name="metodeVolume"]:checked').value;
+            const grpBucket = document.getElementById('groupBucket');
+            const txtTotal = document.getElementById('totalVolume');
+            if (mode === 'BUCKET') { grpBucket.style.display = 'flex'; txtTotal.readOnly = true; txtTotal.classList.add('bg-light'); kalkulasiVolume(); } 
+            else { grpBucket.style.display = 'none'; txtTotal.readOnly = false; txtTotal.classList.remove('bg-light'); txtTotal.value = ''; txtTotal.focus(); }
+        }
+
+        function kalkulasiVolume() {
+            const mode = document.querySelector('input[name="metodeVolume"]:checked').value;
+            if (mode === 'BUCKET') {
+                const kap = parseFloat(document.getElementById('kapasitasBucket').value) || 0;
+                const jml = parseFloat(document.getElementById('jumlahBucket').value) || 0;
+                const total = kap * jml;
+                document.getElementById('totalVolume').value = total > 0 ? total.toFixed(2) : '';
+            }
+        }
+
+        function switchTab(tab) {
+            document.getElementById('navBtn-IN').classList.remove('active'); document.getElementById('navBtn-OUT').classList.remove('active'); document.getElementById('navBtn-HISTORY').classList.remove('active');
+            const viewForm = document.getElementById('view-form'); const viewHistory = document.getElementById('view-history'); const appHeader = document.getElementById('appHeader');
+
+            if(tab === 'IN' || tab === 'OUT') {
+                viewForm.classList.add('active'); viewHistory.classList.remove('active'); document.getElementById('tipePergerakan').value = tab;
+                if(tab === 'IN') {
+                    document.getElementById('navBtn-IN').classList.add('active'); document.getElementById('headerTitle').innerText = "MATERIAL MASUK (IN)";
+                    appHeader.style.backgroundColor = "#ffc107"; appHeader.style.color = "#212529";
+                } else {
+                    document.getElementById('navBtn-OUT').classList.add('active'); document.getElementById('headerTitle').innerText = "MATERIAL KELUAR (OUT)";
+                    appHeader.style.backgroundColor = "#dc3545"; appHeader.style.color = "#fff";
+                }
+            } else {
+                document.getElementById('navBtn-HISTORY').classList.add('active');
+                viewForm.classList.remove('active'); viewHistory.classList.add('active');
+                document.getElementById('headerTitle').innerText = "DASHBOARD DATA";
+                appHeader.style.backgroundColor = "#212529"; appHeader.style.color = "#fff";
+                renderUI(); 
+            }
+        }
+
+        function loadData() {
+            startLoading();
+            if (typeof google === 'undefined') {
+                if(URL_WEBAPP_GAS !== "") {
+                    // API MODE (Standalone HTML)
+                    fetch(`${URL_WEBAPP_GAS}?api=getData`)
+                        .then(response => response.json())
+                        .then(res => { if(res.status === 'success') { db.records = res.records; } renderUI(); endLoading(); })
+                        .catch(err => { endLoading(); Swal.fire('Error', 'Gagal memuat API Data.', 'error'); renderUI(); });
+                } else {
+                    // CANVAS SIMULATION
+                    db.records = [
+                        { Tipe_Pergerakan: "IN", Tanggal_Jam: "2026-09-23 08:30", Jenis_Material: "ANDESIT", KM_Asal: 0, Lokasi_Asal: "KELANIS", KM_Tujuan: 71, Lokasi_Tujuan: "STOCKPILE 71", Sign_Call_DT: "DT-314", Perusahaan_DT: "PT BMC", Jenis_Alat_Loading: "Loader", Sign_Call_Loading: "WL-02", Perusahaan_Loading: "PT BMC", Metode_Volume: "BUCKET", Kapasitas_Bucket: 5.39, Jumlah_Bucket: 2, Total_Volume: 10.78, Nama_Checker: "Ardian" }
+                    ];
+                    setTimeout(() => { renderUI(); endLoading(); }, 500);
+                }
+            } else {
+                // RUN IN GOOGLE APPS SCRIPT
+                google.script.run
+                    .withSuccessHandler(res => { db = res; renderUI(); endLoading(); })
+                    .withFailureHandler(err => { endLoading(); renderUI(); })
+                    .getAllData();
+            }
+        }
+
+        function renderUI() {
+            const list = document.getElementById('historyList'); 
+            const alertSync = document.getElementById('pendingSyncAlert');
+            const txtCount = document.getElementById('pendingCount');
+            list.innerHTML = '';
+            
+            let queue = JSON.parse(localStorage.getItem('fieldStockOfflineQueue') || '[]');
+            if(queue.length > 0) { alertSync.style.display = 'block'; txtCount.innerText = queue.length; } 
+            else { alertSync.style.display = 'none'; }
+
+            let combinedData = [...queue, ...(db.records || [])];
+            
+            if(combinedData.length === 0) { list.innerHTML = `<div class="text-center text-muted mt-4"><p>Belum ada data.</p></div>`; return; }
+
+            combinedData.slice(0, 50).forEach(row => {
+                const isIN = row.Tipe_Pergerakan === 'IN';
+                let badgeColor = isIN ? 'bg-success' : 'bg-danger';
+                let cardStyle = isIN ? 'border-in' : 'border-out';
+                let statusBadge = '';
+                
+                if(row.isOfflinePending) {
+                    badgeColor = 'bg-warning text-dark'; cardStyle = 'border-pending';
+                    statusBadge = `<div class="w-100 bg-warning text-dark text-center fw-bold small py-1" style="border-radius: 0 0 10px 10px; margin-top:-5px; margin-bottom:5px;"><i class="bi bi-clock-history"></i> BELUM TERKIRIM (OFFLINE)</div>`;
+                }
+
+                let timeStr = row.Tanggal_Jam;
+                if(typeof timeStr === 'string' && timeStr.length > 10) timeStr = timeStr.substring(11,16);
+
+                const card = document.createElement('div');
+                card.className = `history-card ${cardStyle}`;
+                card.innerHTML = `
+                    ${statusBadge}
+                    <div class="d-flex justify-content-between align-items-center mb-2 mt-1">
+                        <div class="fw-bold fs-6 text-dark">${row.Sign_Call_DT}</div>
+                        <span class="badge ${badgeColor}">${row.Tipe_Pergerakan}</span>
+                    </div>
+                    <div class="small mb-2 d-flex justify-content-between border-bottom pb-2">
+                        <span><i class="bi bi-clock me-1"></i> ${timeStr}</span>
+                        <span class="fw-bold">${row.Jenis_Material}</span>
+                    </div>
+                    <div class="row g-1 small bg-light rounded p-2 mb-2">
+                        <div class="col-12"><i class="bi bi-geo-alt text-danger me-1"></i> ${row.Lokasi_Asal} (KM ${row.KM_Asal})</div>
+                        <div class="col-12 mt-1"><i class="bi bi-geo text-success me-1"></i> ${row.Lokasi_Tujuan} (KM ${row.KM_Tujuan})</div>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted mt-1 align-items-center" style="font-size: 0.75rem;">
+                        <span>Alat: <strong>${row.Sign_Call_Loading}</strong></span>
+                        <span class="text-primary fw-bold" style="font-size: 0.85rem;">Vol: ${row.Total_Volume}</span>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        function submitData(e) {
+            e.preventDefault();
+            const btnSubmit = document.getElementById('btnSubmit'); 
+            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span>...'; btnSubmit.disabled = true;
+
+            const mode = document.querySelector('input[name="metodeVolume"]:checked').value;
+            const payload = {
+                tipe: document.getElementById('tipePergerakan').value, tanggalJam: document.getElementById('tanggalJam').value, jenisMaterial: document.getElementById('jenisMaterial').value.toUpperCase(),
+                kmAsal: document.getElementById('kmAsal').value, lokasiAsal: document.getElementById('lokasiAsal').value.toUpperCase(),
+                kmTujuan: document.getElementById('kmTujuan').value, lokasiTujuan: document.getElementById('lokasiTujuan').value.toUpperCase(),
+                signCallDT: document.getElementById('signCallDT').value.toUpperCase(), perusahaanDT: document.getElementById('perusahaanDT').value,
+                jenisLoading: document.getElementById('jenisLoading').value, signCallLoading: document.getElementById('signCallLoading').value.toUpperCase(), perusahaanLoading: document.getElementById('perusahaanLoading').value,
+                metodeVolume: mode, kapasitasBucket: mode === 'BUCKET' ? document.getElementById('kapasitasBucket').value : 0, jumlahBucket: mode === 'BUCKET' ? document.getElementById('jumlahBucket').value : 0,
+                totalVolume: document.getElementById('totalVolume').value, namaChecker: document.getElementById('namaChecker').value
+            };
+
+            // JIKA OFFLINE (SIMPAN KE MEMORI HP)
+            if (!navigator.onLine) {
+                payload.isOfflinePending = true; 
+                let queue = JSON.parse(localStorage.getItem('fieldStockOfflineQueue') || '[]');
+                queue.push(payload);
+                localStorage.setItem('fieldStockOfflineQueue', JSON.stringify(queue));
+                resetFormPartial(); btnSubmit.innerHTML = '<i class="bi bi-send-fill me-2"></i> SIMPAN 1 RIT'; btnSubmit.disabled = false;
+                Swal.fire({title: 'Tersimpan Offline!', text: 'Sinyal hilang. Data diamankan di HP.', icon: 'info'});
+                return; 
+            }
+
+            // JIKA ONLINE TAPI DI CANVAS/STANDALONE
+            if (typeof google === 'undefined') {
+                if(URL_WEBAPP_GAS !== "") {
+                    // Fetch API Standalone
+                    fetch(URL_WEBAPP_GAS, {
+                        method: 'POST', body: JSON.stringify({ action: 'saveSingle', data: payload }),
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' } // text/plain untuk bypass CORS preflight
+                    }).then(() => {
+                        resetFormPartial(); btnSubmit.innerHTML = '<i class="bi bi-send-fill me-2"></i> SIMPAN 1 RIT'; btnSubmit.disabled = false;
+                        Swal.fire({title: 'Tersimpan!', icon: 'success', timer: 1500}); loadData();
+                    }).catch(() => {
+                        // Jika fetch gagal (koneksi buruk)
+                        payload.isOfflinePending = true; let queue = JSON.parse(localStorage.getItem('fieldStockOfflineQueue') || '[]'); queue.push(payload); localStorage.setItem('fieldStockOfflineQueue', JSON.stringify(queue));
+                        resetFormPartial(); btnSubmit.innerHTML = '<i class="bi bi-send-fill me-2"></i> SIMPAN 1 RIT'; btnSubmit.disabled = false;
+                    });
+                } else {
+                    db.records.unshift(payload); resetFormPartial(); btnSubmit.innerHTML = '<i class="bi bi-send-fill me-2"></i> SIMPAN 1 RIT'; btnSubmit.disabled = false; Swal.fire({title: 'Tersimpan!', icon: 'success', timer: 1500});
+                }
+            } else {
+                // JIKA ONLINE DI GOOGLE APPS SCRIPT
+                google.script.run
+                    .withSuccessHandler(res => {
+                        btnSubmit.innerHTML = '<i class="bi bi-send-fill me-2"></i> SIMPAN 1 RIT'; btnSubmit.disabled = false;
+                        if(res.status === 'success') { Swal.fire({ title: 'Berhasil!', icon: 'success', timer: 1500, showConfirmButton: false }); resetFormPartial(); loadData(); }
+                    })
+                    .withFailureHandler(err => { 
+                        payload.isOfflinePending = true; let queue = JSON.parse(localStorage.getItem('fieldStockOfflineQueue') || '[]'); queue.push(payload); localStorage.setItem('fieldStockOfflineQueue', JSON.stringify(queue));
+                        btnSubmit.innerHTML = '<i class="bi bi-send-fill me-2"></i> SIMPAN 1 RIT'; btnSubmit.disabled = false; resetFormPartial(); Swal.fire('Koneksi Buruk', 'Gagal kirim ke server. Data diamankan di HP.', 'warning'); 
+                    })
+                    .saveData(payload);
+            }
+        }
+
+        function syncQueueManual() {
+            if(!navigator.onLine) { Swal.fire('Offline', 'Anda belum terhubung ke internet.', 'warning'); return; }
+            syncQueueAuto();
+        }
+
+        function syncQueueAuto() {
+            let queue = JSON.parse(localStorage.getItem('fieldStockOfflineQueue') || '[]');
+            if(queue.length === 0 || !navigator.onLine) return;
+
+            Swal.fire({title: 'Sinkronisasi...', text: `Mengirim ${queue.length} data ke server.`, allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+            if (typeof google !== 'undefined') {
+                google.script.run
+                    .withSuccessHandler(res => {
+                        if(res.status === 'success') { localStorage.removeItem('fieldStockOfflineQueue'); Swal.fire('Berhasil!', res.message, 'success'); loadData(); }
+                    })
+                    .syncDataBatch(queue);
+            } else if (URL_WEBAPP_GAS !== "") {
+                fetch(URL_WEBAPP_GAS, { method: 'POST', body: JSON.stringify({ action: 'syncBatch', data: queue }), headers: { 'Content-Type': 'text/plain;charset=utf-8' }})
+                    .then(() => { localStorage.removeItem('fieldStockOfflineQueue'); Swal.fire('Berhasil!', 'Data tersinkronisasi via API.', 'success'); loadData(); })
+                    .catch(() => { Swal.fire('Error', 'Gagal sync API.', 'error'); });
+            } else {
+                setTimeout(() => { queue.forEach(q => { delete q.isOfflinePending; db.records.unshift(q); }); localStorage.removeItem('fieldStockOfflineQueue'); Swal.fire('Tersinkronisasi!', 'Simulasi Mode', 'success'); renderUI(); }, 1500);
+            }
+        }
+
+        function resetFormPartial() {
+            document.getElementById('signCallDT').value = ''; document.getElementById('signCallDT').focus(); 
+        }
+    </script>
+</body>
+</html>
